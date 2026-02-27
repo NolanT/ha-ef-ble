@@ -207,6 +207,12 @@ ECOFLOW_DEVICE_LIST = {
     "HR62":{"name": "EcoFlow Smart Home Panel 3", "packets": "v3"},
     "HR63":{"name": "EcoFlow Smart Home Panel 3", "packets": "v3"},
     "HR6C":{"name": "EcoFlow Smart Home Panel 3", "packets": "v3"},
+    "HR6H":{"name": "EcoFlow Smart Panel 40", "packets": "v3"},
+
+    # =====================
+    # OCEAN PRO INVERTER
+    # =====================
+    "HR5N":{"name": "EcoFlow Ocean Pro Inverter", "packets": "v3"},
 
     "HJ31":{"name": "EcoFlow PowerOcean", "packets": "?"},
     "HJ32":{"name": "EcoFlow PowerOcean Battery", "packets": "?"},

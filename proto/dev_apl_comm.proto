@@ -1,0 +1,226 @@
+/* AUTO-GENERATED FILE. DO NOT MODIFY.
+ * Generated from EcoFlow DevAplComm protocol analysis.
+ * Used by: Ocean Pro Inverter (EF-PCS-24, HR5N prefix)
+ *          Smart Panel 40 (EF-SHP-40, HR6H prefix)
+ */
+syntax = "proto3";
+
+package dev_apl_comm;
+
+message LoadChSta {
+  optional uint32 ch_sta = 1;
+  optional uint32 ch_dev_type = 2;
+  optional uint32 ch_dev_id = 3;
+  optional uint32 force_chg_sta = 4;
+  optional uint32 signal_line_sta = 5;
+  optional uint32 ch_ctrl_sta = 6;
+}
+
+message LoadChSampleInfo {
+  optional float load_ch_vol = 1;
+  optional float load_ch_amp = 2;
+  optional float load_ch_watts = 3;
+}
+
+message DisplayPropertyUpload {
+  // Grid connection
+  optional float grid_connection_vol = 613;
+  optional float grid_connection_amp = 614;
+  optional float grid_connection_freq = 615;
+  optional uint32 grid_connection_sta = 619;
+  optional float grid_curtailment_signal = 620;
+  optional bool grid_is_energized = 752;
+  optional uint32 grid_rly_state = 755;
+  optional float grid_connection_apparent_power = 919;
+  optional float grid_connection_apparent_power_l1 = 966;
+  optional float grid_connection_apparent_power_l2 = 967;
+  optional float grid_connection_power_l1 = 962;
+  optional float grid_connection_power_l2 = 963;
+  optional float grid_connection_power_l3 = 772;
+  optional float grid_connection_amp_l1 = 958;
+  optional float grid_connection_amp_l2 = 959;
+  optional float grid_connection_amp_l3 = 784;
+  optional float grid_connection_vol_l1 = 956;
+  optional float grid_connection_vol_l2 = 957;
+  optional float grid_connection_vol_l3 = 771;
+  optional float grid_connection_freq_l1 = 960;
+  optional float grid_connection_freq_l2 = 961;
+  optional uint32 grid_type = 1447;
+
+  // Power/energy
+  optional float pow_exter_pv_inv_in_w = 811;
+  optional float pow_home_energy_pv_in_cms = 812;
+  optional uint32 panel_generate_energy_run_sta = 814;
+  optional float panel_generate_energy_soc_cms = 815;
+  optional uint32 panel_generate_energy_battery_sta_cms = 816;
+  optional float panel_generate_energy_battery_power_cms = 817;
+  optional float dev_rate_power = 780;
+  optional float pow_get_standy_generator = 781;
+  optional float pow_get_portable_generator = 782;
+
+  // Inverter
+  optional uint32 inv_target_vol = 751;
+  optional float panel_bus_vol = 769;
+  optional float panel_bus_vol_l1 = 1063;
+  optional float panel_bus_vol_l2 = 1064;
+  optional uint32 ac_phase_type_allow = 754;
+
+  // Feed-in
+  optional uint32 feed_grid_mode = 520;
+  optional float feed_grid_mode_pow_limit = 521;
+  optional float feed_grid_mode_pow_max = 727;
+
+  // Circuit voltage
+  optional float load_ch_vol = 820;
+
+  // Circuit status (Smart Panel 40 - 40 circuits)
+  optional LoadChSta load_ch1_sta = 794;
+  optional LoadChSta load_ch2_sta = 795;
+  optional LoadChSta load_ch3_sta = 796;
+  optional LoadChSta load_ch4_sta = 797;
+  optional LoadChSta load_ch5_sta = 798;
+  optional LoadChSta load_ch6_sta = 799;
+  optional LoadChSta load_ch7_sta = 800;
+  optional LoadChSta load_ch8_sta = 801;
+  optional LoadChSta load_ch9_sta = 802;
+  optional LoadChSta load_ch10_sta = 803;
+  optional LoadChSta load_ch11_sta = 804;
+  optional LoadChSta load_ch12_sta = 805;
+  optional LoadChSta load_ch13_sta = 920;
+  optional LoadChSta load_ch14_sta = 921;
+  optional LoadChSta load_ch15_sta = 922;
+  optional LoadChSta load_ch16_sta = 923;
+  optional LoadChSta load_ch17_sta = 924;
+  optional LoadChSta load_ch18_sta = 925;
+  optional LoadChSta load_ch19_sta = 926;
+  optional LoadChSta load_ch20_sta = 927;
+  optional LoadChSta load_ch21_sta = 928;
+  optional LoadChSta load_ch22_sta = 929;
+  optional LoadChSta load_ch23_sta = 930;
+  optional LoadChSta load_ch24_sta = 931;
+  optional LoadChSta load_ch25_sta = 932;
+  optional LoadChSta load_ch26_sta = 933;
+  optional LoadChSta load_ch27_sta = 934;
+  optional LoadChSta load_ch28_sta = 935;
+  optional LoadChSta load_ch29_sta = 936;
+  optional LoadChSta load_ch30_sta = 937;
+  optional LoadChSta load_ch31_sta = 938;
+  optional LoadChSta load_ch32_sta = 939;
+  optional LoadChSta load_ch33_sta = 940;
+  optional LoadChSta load_ch34_sta = 941;
+  optional LoadChSta load_ch35_sta = 942;
+  optional LoadChSta load_ch36_sta = 943;
+  optional LoadChSta load_ch37_sta = 944;
+  optional LoadChSta load_ch38_sta = 945;
+  optional LoadChSta load_ch39_sta = 946;
+  optional LoadChSta load_ch40_sta = 947;
+
+  // Circuit power samples
+  optional LoadChSampleInfo load_ch1_sample_info = 1015;
+  optional LoadChSampleInfo load_ch2_sample_info = 1016;
+  optional LoadChSampleInfo load_ch3_sample_info = 1017;
+  optional LoadChSampleInfo load_ch4_sample_info = 1018;
+  optional LoadChSampleInfo load_ch5_sample_info = 1019;
+  optional LoadChSampleInfo load_ch6_sample_info = 1020;
+  optional LoadChSampleInfo load_ch7_sample_info = 1021;
+  optional LoadChSampleInfo load_ch8_sample_info = 1022;
+  optional LoadChSampleInfo load_ch9_sample_info = 1023;
+  optional LoadChSampleInfo load_ch10_sample_info = 1024;
+  optional LoadChSampleInfo load_ch11_sample_info = 1025;
+  optional LoadChSampleInfo load_ch12_sample_info = 1026;
+  optional LoadChSampleInfo load_ch13_sample_info = 1027;
+  optional LoadChSampleInfo load_ch14_sample_info = 1028;
+  optional LoadChSampleInfo load_ch15_sample_info = 1029;
+  optional LoadChSampleInfo load_ch16_sample_info = 1030;
+  optional LoadChSampleInfo load_ch17_sample_info = 1031;
+  optional LoadChSampleInfo load_ch18_sample_info = 1032;
+  optional LoadChSampleInfo load_ch19_sample_info = 1033;
+  optional LoadChSampleInfo load_ch20_sample_info = 1034;
+  optional LoadChSampleInfo load_ch21_sample_info = 1035;
+  optional LoadChSampleInfo load_ch22_sample_info = 1036;
+  optional LoadChSampleInfo load_ch23_sample_info = 1037;
+  optional LoadChSampleInfo load_ch24_sample_info = 1038;
+  optional LoadChSampleInfo load_ch25_sample_info = 1039;
+  optional LoadChSampleInfo load_ch26_sample_info = 1040;
+  optional LoadChSampleInfo load_ch27_sample_info = 1041;
+  optional LoadChSampleInfo load_ch28_sample_info = 1042;
+  optional LoadChSampleInfo load_ch29_sample_info = 1043;
+  optional LoadChSampleInfo load_ch30_sample_info = 1044;
+  optional LoadChSampleInfo load_ch31_sample_info = 1045;
+  optional LoadChSampleInfo load_ch32_sample_info = 1046;
+  optional LoadChSampleInfo load_ch33_sample_info = 1047;
+  optional LoadChSampleInfo load_ch34_sample_info = 1048;
+  optional LoadChSampleInfo load_ch35_sample_info = 1049;
+  optional LoadChSampleInfo load_ch36_sample_info = 1050;
+  optional LoadChSampleInfo load_ch37_sample_info = 1051;
+  optional LoadChSampleInfo load_ch38_sample_info = 1052;
+  optional LoadChSampleInfo load_ch39_sample_info = 1053;
+  optional LoadChSampleInfo load_ch40_sample_info = 1054;
+
+  // CT sensors
+  optional float ct1_current = 1485;
+  optional float ct2_current = 1486;
+  optional float ct3_current = 1487;
+  optional float ct1_active_pwr = 1673;
+  optional float ct2_active_pwr = 1674;
+  optional float ct3_active_pwr = 1675;
+}
+
+message RuntimePropertyUpload {
+  // PCS (Power Conversion System) - Ocean Pro Inverter
+  optional uint32 dt_pcs_waring_code = 640;
+  optional float dt_pcs_grid_fre_l1 = 641;
+  optional float dt_pcs_grid_fre_l2 = 642;
+  optional float dt_pcs_grid_vol_l1_rms = 643;
+  optional float dt_pcs_grid_vol_l2_rms = 644;
+  optional float dt_pcs_grid_curr_l1_rms = 645;
+  optional float dt_pcs_grid_curr_l2_rms = 646;
+  optional float dt_pcs_inv_vol_l1_rms = 647;
+  optional float dt_pcs_inv_vol_l2_rms = 648;
+  optional float pcs_chg_pwr_max = 632;
+  optional float dt_pcs_apparent_power_l1 = 667;
+  optional float dt_pcs_active_power_l1 = 668;
+  optional float dt_pcs_reactive_power_l1 = 669;
+  optional float dt_pcs_apparent_power_l2 = 670;
+  optional float dt_pcs_active_power_l2 = 671;
+  optional float dt_pcs_reactive_power_l2 = 672;
+  optional float dt_pcs_curr_real_l1 = 675;
+  optional float dt_pcs_curr_real_l2 = 676;
+  optional float dt_pcs_grid_average_vol_l1 = 680;
+  optional float dt_pcs_grid_average_vol_l2 = 681;
+  optional float dt_pcs_bp_cur_pwr = 1571;
+  optional float dt_pcs_bp_chg_pwr = 1572;
+}
+
+message ConfigWrite {
+  optional bool cfg_power_off = 3;
+  optional bool cfg_power_on = 4;
+  optional uint32 reset_factory_setting = 5;
+  optional uint32 cfg_utc_time = 6;
+  optional int32 cfg_utc_timezone = 7;
+  optional int32 cfg_display_property_full_upload_period = 67;
+  optional int32 cfg_display_property_incremental_upload_period = 68;
+  optional int32 cfg_runtime_property_full_upload_period = 69;
+  optional int32 cfg_runtime_property_incremental_upload_period = 70;
+  optional bool active_display_property_full_upload = 71;
+  optional bool active_runtime_property_full_upload = 72;
+  optional string cfg_utc_timezone_id = 135;
+  optional bool cfg_utc_set_mode = 136;
+  optional uint32 cfg_feed_grid_mode = 168;
+  optional float cfg_feed_grid_mode_pow_limit = 169;
+  optional uint32 cfg_inv_target_vol = 235;
+  optional uint32 cfg_grid_connection_freq_setting = 532;
+  optional uint32 cfg_grid_type = 567;
+}
+
+message ConfigWriteAck {
+  optional uint32 action_id = 1;
+  optional bool config_ok = 2;
+}
+
+message DevRequest {
+  optional uint32 dev_utc_time = 1;
+  optional float dev_utc_timezone = 2;
+  optional bool require_property_upload_period = 3;
+  optional bool require_time_service = 5;
+}

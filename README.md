@@ -359,6 +359,92 @@ first charging task</sup>
 </details>
 
 <details>
+<summary><b>Ocean Pro Inverter</b> <i>(EF-PCS-24)</i></summary>
+
+<br>
+
+| *Sensors*                  |
+|----------------------------|
+| Battery Level              |
+| Battery Power              |
+| Battery Status             |
+| PV Power                   |
+| PV External Power          |
+| Grid Voltage               |
+| Grid Current               |
+| Grid Frequency             |
+| Grid Status                |
+| Grid Apparent Power        |
+| Grid Power L1              |
+| Grid Power L2              |
+| Grid Voltage L1            |
+| Grid Voltage L2            |
+| Grid Current L1            |
+| Grid Current L2            |
+| Grid Frequency L1          |
+| Grid Frequency L2          |
+| CT1 Current                |
+| CT2 Current                |
+| CT3 Current                |
+| CT1 Power                  |
+| CT2 Power                  |
+| CT3 Power                  |
+| Rated Power                |
+| Bus Voltage                |
+| Standby Generator Power    |
+| Portable Generator Power   |
+| PCS Battery Power          |
+| PCS Grid Voltage L1        |
+| PCS Grid Voltage L2        |
+| PCS Grid Current L1        |
+| PCS Grid Current L2        |
+| PCS Grid Frequency L1      |
+| PCS Grid Frequency L2      |
+| PCS Inverter Voltage L1    |
+| PCS Inverter Voltage L2    |
+| PCS Active Power L1        |
+| PCS Active Power L2        |
+| PCS Reactive Power L1      |
+| PCS Reactive Power L2      |
+| PCS Current L1             |
+| PCS Current L2             |
+
+</details>
+
+<details>
+<summary><b>Smart Panel 40</b> <i>(EF-SHP-40)</i></summary>
+
+<br>
+
+| *Sensors*                              |
+|----------------------------------------|
+| Grid Voltage                           |
+| Grid Current                           |
+| Grid Frequency                         |
+| Grid Status                            |
+| Grid Apparent Power                    |
+| Grid Power L1                          |
+| Grid Power L2                          |
+| Grid Voltage L1                        |
+| Grid Voltage L2                        |
+| Grid Current L1                        |
+| Grid Current L2                        |
+| Grid Frequency L1                      |
+| Grid Frequency L2                      |
+| Bus Voltage                            |
+| Circuit Voltage                        |
+| CT1 Current                            |
+| CT2 Current                            |
+| CT3 Current                            |
+| CT1 Power                              |
+| CT2 Power                              |
+| CT3 Power                              |
+| Circuit Status (Each Circuit, 1–40)    |
+| Circuit Power (Each Circuit, 1–40)     |
+
+</details>
+
+<details>
 <summary><b>Delta 2</b> <i>(Max, Delta 3 1500)</i></summary>
 
 <br>

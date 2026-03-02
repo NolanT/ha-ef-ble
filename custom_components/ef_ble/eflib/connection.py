@@ -24,7 +24,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
 from . import keydata
-from .crc import crc16
+from .crc import crc8, crc16
 from .encpacket import EncPacket
 from .exceptions import (
     AuthFailedError,
@@ -38,7 +38,7 @@ from .exceptions import (
 )
 from .listeners import ListenerGroup, ListenerRegistry
 from .logging_util import ConnectionLogger, LogOptions
-from .packet import Packet
+from .packet import OdmPacket, Packet
 from .props.utils import classproperty
 
 MAX_RECONNECT_ATTEMPTS = 2
@@ -572,6 +572,42 @@ class Connection:
         # Hashing data to get the session key
         return hashlib.md5(data).digest()
 
+    async def _parse_odm_simple(self, data: bytes) -> bytes:
+        """Parse a 0x7E-framed ODM packet and return the inner payload bytes.
+
+        Used during the ECDH handshake phase when a device responds in ODM format.
+        ODM format: [0x7E, version, flag, len_lo, len_hi, crc8(first_5),
+                     seq_lo, seq_hi, cmdIdOdm_lo, cmdIdOdm_hi, payload(len), crc16]
+        """
+        if len(data) < 12:
+            error_msg = "parseSimple(ODM): packet too small: %r"
+            self._logger.error(error_msg, bytearray(data).hex())
+            self._last_errors.append(error_msg % bytearray(data).hex())
+            raise PacketParseError
+
+        payload_len = struct.unpack("<H", data[3:5])[0]
+
+        if crc8(data[0:5]) != data[5]:
+            error_msg = "parseSimple(ODM): incorrect header CRC8: %r"
+            self._logger.error(error_msg, bytearray(data).hex())
+            self._last_errors.append(error_msg % bytearray(data).hex())
+            raise PacketParseError
+
+        data_end = 10 + payload_len
+        if len(data) < data_end + 2:
+            error_msg = "parseSimple(ODM): truncated packet: %r"
+            self._logger.error(error_msg, bytearray(data).hex())
+            self._last_errors.append(error_msg % bytearray(data).hex())
+            raise PacketParseError
+
+        if crc16(data[:data_end]) != struct.unpack("<H", data[data_end : data_end + 2])[0]:
+            error_msg = "parseSimple(ODM): incorrect CRC16: %r"
+            self._logger.error(error_msg, bytearray(data).hex())
+            self._last_errors.append(error_msg % bytearray(data).hex())
+            raise PacketParseError
+
+        return data[10:data_end]
+
     async def parseSimple(self, data: str):
         """Deserializes bytes stream into the simple bytes"""
         self._logger.log_filtered(
@@ -579,6 +615,9 @@ class Connection:
             "parseSimple: Data: %r",
             bytearray(data).hex(),
         )
+
+        if data[0:1] == OdmPacket.PREFIX:
+            return await self._parse_odm_simple(data)
 
         header = data[0:6]
         data_end = 6 + struct.unpack("<H", header[4:6])[0]
@@ -622,7 +661,104 @@ class Connection:
         # through
         packets = []
         while data:
-            if not data.startswith(EncPacket.PREFIX):
+            if data.startswith(OdmPacket.PREFIX):
+                # ODM protocol packet (0x7E frame) — used by Smart Panel 40 and similar
+                if len(data) < 12:
+                    error_msg = (
+                        "parseEncPackets: Unable to parse ODM packet - too small: %r"
+                    )
+                    self._logger.error(error_msg, bytearray(data).hex())
+                    self._last_errors.append(error_msg % bytearray(data).hex())
+                    raise EncPacketParseError
+
+                payload_len = struct.unpack("<H", data[3:5])[0]
+                data_end = 10 + payload_len + 2  # header(10) + payload + CRC16(2)
+                if data_end > len(data):
+                    self._enc_packet_buffer += data
+                    break
+
+                # Save the full frame before advancing data pointer
+                frame = data[:data_end]
+                data = data[data_end:]
+
+                try:
+                    if crc8(frame[:5]) != frame[5]:
+                        error_msg = "parseEncPackets: ODM packet incorrect header CRC8: %r"
+                        self._logger.error(error_msg, bytearray(frame).hex())
+                        self._last_errors.append(error_msg % bytearray(frame).hex())
+                        raise PacketParseError  # noqa: TRY301
+
+                    if crc16(frame[:-2]) != struct.unpack("<H", frame[-2:])[0]:
+                        error_msg = "parseEncPackets: ODM packet incorrect CRC16: %r"
+                        self._logger.error(error_msg, bytearray(frame).hex())
+                        self._last_errors.append(error_msg % bytearray(frame).hex())
+                        raise PacketParseError  # noqa: TRY301
+
+                    cmd_id_odm = struct.unpack("<H", frame[8:10])[0]
+                    encrypted_payload = frame[10:-2]
+
+                    payload = await self.decryptSession(encrypted_payload)
+                    self._logger.log_filtered(
+                        LogOptions.DECRYPTED_PAYLOADS,
+                        "parseEncPackets: decrypted ODM payload: %r",
+                        bytearray(payload).hex(),
+                    )
+
+                    packet = OdmPacket(cmd_id_odm=cmd_id_odm, payload=payload)
+                    self._listeners.on_packet_parsed(packet)
+                    self._logger.log_filtered(
+                        LogOptions.PACKETS,
+                        "Parsed ODM packet: %s",
+                        packet,
+                    )
+                    packets.append(packet)
+                except Exception as e:  # noqa: BLE001
+                    await self.add_error(e)
+
+            elif data.startswith(EncPacket.PREFIX):
+                header = data[0:6]
+                data_end = 6 + struct.unpack("<H", header[4:6])[0]
+                if data_end > len(data):
+                    self._enc_packet_buffer += data
+                    break
+
+                payload_data = data[6 : data_end - 2]
+                payload_crc = data[data_end - 2 : data_end]
+
+                # Move to next data packet
+                data = data[data_end:]
+
+                try:
+                    # Check the packet CRC16
+                    if crc16(header + payload_data) != struct.unpack("<H", payload_crc)[0]:
+                        error_msg = "Unable to parse encrypted packet - incorrect CRC16: %r"
+                        self._logger.error(error_msg, bytearray(payload_data).hex())
+                        self._last_errors.append(error_msg % bytearray(payload_data).hex())
+                        raise PacketParseError  # noqa: TRY301
+
+                    # Decrypt the payload packet
+                    payload = await self.decryptSession(payload_data)
+                    self._logger.log_filtered(
+                        LogOptions.DECRYPTED_PAYLOADS,
+                        "parseEncPackets: decrypted payload: %r",
+                        bytearray(payload).hex(),
+                    )
+
+                    # Parse packet
+                    self._listeners.on_packet_received(payload)
+                    packet = await self._packet_parse(payload)
+                    self._listeners.on_packet_parsed(packet)
+                    self._logger.log_filtered(
+                        LogOptions.PACKETS,
+                        "Parsed packet: %s",
+                        packet,
+                    )
+                    if not Packet.is_invalid(packet):
+                        packets.append(packet)
+                except Exception as e:  # noqa: BLE001
+                    await self.add_error(e)
+
+            else:
                 error_msg = (
                     "parseEncPackets: Unable to parse encrypted packet - prefix is "
                     "incorrect: %r"
@@ -630,48 +766,6 @@ class Connection:
                 self._logger.error(error_msg, bytearray(data).hex())
                 self._last_errors.append(error_msg % bytearray(data).hex())
                 return packets
-
-            header = data[0:6]
-            data_end = 6 + struct.unpack("<H", header[4:6])[0]
-            if data_end > len(data):
-                self._enc_packet_buffer += data
-                break
-
-            payload_data = data[6 : data_end - 2]
-            payload_crc = data[data_end - 2 : data_end]
-
-            # Move to next data packet
-            data = data[data_end:]
-
-            try:
-                # Check the packet CRC16
-                if crc16(header + payload_data) != struct.unpack("<H", payload_crc)[0]:
-                    error_msg = "Unable to parse encrypted packet - incorrect CRC16: %r"
-                    self._logger.error(error_msg, bytearray(payload_data).hex())
-                    self._last_errors.append(error_msg % bytearray(payload_data).hex())
-                    raise PacketParseError  # noqa: TRY301
-
-                # Decrypt the payload packet
-                payload = await self.decryptSession(payload_data)
-                self._logger.log_filtered(
-                    LogOptions.DECRYPTED_PAYLOADS,
-                    "parseEncPackets: decrypted payload: %r",
-                    bytearray(payload).hex(),
-                )
-
-                # Parse packet
-                self._listeners.on_packet_received(payload)
-                packet = await self._packet_parse(payload)
-                self._listeners.on_packet_parsed(packet)
-                self._logger.log_filtered(
-                    LogOptions.PACKETS,
-                    "Parsed packet: %s",
-                    packet,
-                )
-                if not Packet.is_invalid(packet):
-                    packets.append(packet)
-            except Exception as e:  # noqa: BLE001
-                await self.add_error(e)
 
         return packets
 

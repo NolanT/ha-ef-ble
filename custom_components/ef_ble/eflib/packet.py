@@ -223,3 +223,65 @@ class InvalidPacket(Packet):
 
     def __repr__(self):
         return f"InvalidPacket(error_message='{self.error_message}')"
+
+
+class OdmPacket(Packet):
+    """ODM-protocol packet (0x7E frame header) used by Smart Panel 40 and similar devices.
+
+    Format: [0x7E, version, flag, len_lo, len_hi, crc8(first_5), seq_lo, seq_hi,
+             cmdIdOdm_lo, cmdIdOdm_hi, payload(len bytes), crc16(all_preceding)]
+    """
+
+    PREFIX = b"\x7e"
+
+    def __init__(self, cmd_id_odm: int, payload: bytes = b""):
+        super().__init__(src=0, dst=0, cmd_set=0, cmd_id=0, payload=payload)
+        self._cmd_id_odm = cmd_id_odm
+
+    @property
+    def cmdIdOdm(self) -> int:
+        return self._cmd_id_odm
+
+    @staticmethod
+    def fromBytes(data: bytes):
+        """Parse a complete 0x7E-framed ODM packet (with CRC validation)."""
+        if not data.startswith(OdmPacket.PREFIX):
+            error_msg = "Unable to parse ODM packet - prefix is incorrect: %s"
+            _LOGGER.error(error_msg, bytearray(data).hex())
+            return InvalidPacket(error_msg % bytearray(data).hex())
+
+        if len(data) < 12:  # 10 header bytes + 0 payload + 2 CRC16
+            error_msg = "Unable to parse ODM packet - too small: %s"
+            _LOGGER.error(error_msg, bytearray(data).hex())
+            return InvalidPacket(error_msg % bytearray(data).hex())
+
+        payload_len = struct.unpack("<H", data[3:5])[0]
+
+        if crc8(data[0:5]) != data[5]:
+            error_msg = "Unable to parse ODM packet - incorrect header CRC8: %s"
+            _LOGGER.error(error_msg, bytearray(data).hex())
+            return InvalidPacket(error_msg % bytearray(data).hex())
+
+        data_end = 10 + payload_len
+        if len(data) < data_end + 2:
+            error_msg = "Unable to parse ODM packet - truncated: %s"
+            _LOGGER.error(error_msg, bytearray(data).hex())
+            return InvalidPacket(error_msg % bytearray(data).hex())
+
+        if crc16(data[:data_end]) != struct.unpack("<H", data[data_end : data_end + 2])[0]:
+            error_msg = "Unable to parse ODM packet - incorrect CRC16: %s"
+            _LOGGER.error(error_msg, bytearray(data).hex())
+            return InvalidPacket(error_msg % bytearray(data).hex())
+
+        cmd_id_odm = struct.unpack("<H", data[8:10])[0]
+        payload = data[10:data_end]
+
+        return OdmPacket(cmd_id_odm=cmd_id_odm, payload=payload)
+
+    def __repr__(self):
+        return (
+            "OdmPacket("
+            f"cmd_id_odm=0x{self._cmd_id_odm:04X}, "
+            f"payload=bytes.fromhex('{self._payload_hex}')"
+            ")"
+        )

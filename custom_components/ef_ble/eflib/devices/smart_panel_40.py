@@ -1,7 +1,7 @@
 import time
 
 from ..devicebase import AdvertisementData, BLEDevice, DeviceBase
-from ..packet import Packet
+from ..packet import OdmPacket, Packet
 from ..pb import dev_apl_comm_pb2
 from ..props import ProtobufProps, pb_field, proto_attr_mapper
 
@@ -148,7 +148,14 @@ class Device(DeviceBase, ProtobufProps):
         processed = False
         self.reset_updated()
 
-        if packet.src == 0x02 and packet.cmdSet == 0xFE and packet.cmdId == 0x15:
+        if isinstance(packet, OdmPacket):
+            # Smart Panel 40 uses ODM protocol (0x7E framing); the decrypted payload
+            # is a raw DisplayPropertyUpload protobuf (no inner 0xAA packet wrapper).
+            self.update_from_bytes(
+                dev_apl_comm_pb2.DisplayPropertyUpload, packet.payload
+            )
+            processed = True
+        elif packet.src == 0x02 and packet.cmdSet == 0xFE and packet.cmdId == 0x15:
             self.update_from_bytes(
                 dev_apl_comm_pb2.DisplayPropertyUpload, packet.payload
             )

@@ -610,14 +610,24 @@ class Connection:
 
     async def parseSimple(self, data: str):
         """Deserializes bytes stream into the simple bytes"""
-        self._logger.log_filtered(
-            LogOptions.ENCRYPTED_PAYLOADS,
-            "parseSimple: Data: %r",
+        self._logger.warning(
+            "parseSimple: raw data (%d bytes): %s",
+            len(data),
             bytearray(data).hex(),
         )
 
         if data[0:1] == OdmPacket.PREFIX:
             return await self._parse_odm_simple(data)
+
+        if data[0:2] != EncPacket.PREFIX:
+            error_msg = (
+                "parseSimple: unknown packet format (prefix 0x%s): %s"
+            )
+            prefix_hex = bytearray(data[0:2]).hex()
+            data_hex = bytearray(data).hex()
+            self._logger.error(error_msg, prefix_hex, data_hex)
+            self._last_errors.append(error_msg % (prefix_hex, data_hex))
+            raise PacketParseError
 
         header = data[0:6]
         data_end = 6 + struct.unpack("<H", header[4:6])[0]

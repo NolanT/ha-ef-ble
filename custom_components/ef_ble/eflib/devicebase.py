@@ -37,6 +37,7 @@ class DeviceBase(abc.ABC):
     """Device Base"""
 
     MANUFACTURER_KEY = 0xB5B5
+    DIRECT_MODE: bool = False
 
     NAME_PREFIX: str
 
@@ -183,6 +184,7 @@ class DeviceBase(abc.ABC):
                     data_parse=self.data_parse,
                     packet_parse=self.packet_parse,
                     packet_version=self.packet_version,
+                    direct_mode=self.DIRECT_MODE,
                 )
                 .with_logging_options(self._logger.options)
                 .with_disabled_reconnect(self._reconnect_disabled)

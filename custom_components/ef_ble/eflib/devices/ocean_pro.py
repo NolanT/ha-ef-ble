@@ -1,7 +1,7 @@
 import time
 
 from ..devicebase import AdvertisementData, BLEDevice, DeviceBase
-from ..packet import Packet
+from ..packet import OdmPacket, Packet
 from ..pb import dev_apl_comm_pb2
 from ..props import ProtobufProps, pb_field, proto_attr_mapper
 
@@ -16,12 +16,12 @@ def _round2(value: float):
 class Device(DeviceBase, ProtobufProps):
     """Ocean Pro Hybrid Inverter"""
 
-    SN_PREFIX = (b"HR5N",)
+    SN_PREFIX = (b"HR5",)
     NAME_PREFIX = "EF-HR5N"
 
     @classmethod
     def check(cls, sn: bytes) -> bool:
-        return sn[:4] == b"HR5N"
+        return sn[:3] == b"HR5"
 
     # Grid
     grid_voltage = pb_field(pb.grid_connection_vol, _round2)
@@ -103,7 +103,12 @@ class Device(DeviceBase, ProtobufProps):
         processed = False
         self.reset_updated()
 
-        if packet.src == 0x02 and packet.cmdSet == 0xFE:
+        if isinstance(packet, OdmPacket):
+            # ODM protocol: payload is raw protobuf; try both message types
+            self.update_from_bytes(dev_apl_comm_pb2.DisplayPropertyUpload, packet.payload)
+            self.update_from_bytes(dev_apl_comm_pb2.RuntimePropertyUpload, packet.payload)
+            processed = True
+        elif packet.src == 0x02 and packet.cmdSet == 0xFE:
             if packet.cmdId == 0x15:
                 self.update_from_bytes(
                     dev_apl_comm_pb2.DisplayPropertyUpload, packet.payload

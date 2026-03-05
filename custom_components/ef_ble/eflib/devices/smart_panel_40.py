@@ -15,12 +15,12 @@ def _round2(value: float):
 class Device(DeviceBase, ProtobufProps):
     """Smart Panel 40 (EF-SHP-40)"""
 
-    SN_PREFIX = (b"HR6H",)
+    SN_PREFIX = (b"HR6",)
     NAME_PREFIX = "EF-HR6H"
 
     @classmethod
     def check(cls, sn: bytes) -> bool:
-        return sn[:4] == b"HR6H"
+        return sn[:3] == b"HR6"
 
     # Grid
     grid_voltage = pb_field(pb.grid_connection_vol, _round2)

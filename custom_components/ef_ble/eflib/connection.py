@@ -185,6 +185,7 @@ class Connection:
         data_parse: Callable[[Packet], Awaitable[bool]],
         packet_parse: Callable[[bytes], Awaitable[Packet]],
         packet_version: int = 0x03,
+        direct_mode: bool = False,
     ) -> None:
         self._ble_dev = ble_dev
         self._address = ble_dev.address
@@ -203,6 +204,8 @@ class Connection:
         self._retry_on_disconnect = False
         self._retry_on_disconnect_delay = 10
         self._enc_packet_buffer = b""
+        self._direct_mode = direct_mode
+        self._direct_buffer = b""
 
         self._tasks: set[asyncio.Task] = set()
 
@@ -351,7 +354,10 @@ class Connection:
         )
         self._logger.info("Init completed, starting auth routine...")
 
-        await self.initBleSessionKey()
+        if self._direct_mode:
+            await self.initDirectMode()
+        else:
+            await self.initBleSessionKey()
 
     def disconnected(self, *args, **kwargs) -> None:
         self._logger.warning("Disconnected from device")
@@ -610,8 +616,9 @@ class Connection:
 
     async def parseSimple(self, data: str):
         """Deserializes bytes stream into the simple bytes"""
-        self._logger.warning(
-            "parseSimple: raw data (%d bytes): %s",
+        self._logger.log_filtered(
+            LogOptions.ENCRYPTED_PAYLOADS,
+            "parseSimple: data (%d bytes): %s",
             len(data),
             bytearray(data).hex(),
         )
@@ -864,6 +871,101 @@ class Connection:
         # Running reply asynchroneously
         self._add_task(self.sendPacket(reply_packet))
 
+    async def initDirectMode(self):
+        """Subscribe to BLE notifications directly, bypassing ECDH handshake.
+
+        Used by devices that send raw (version-4 0xAA) packets without any
+        encryption negotiation.
+        """
+        self._logger.info("initDirectMode: subscribing to notifications directly")
+        self._direct_buffer = b""
+        await self._client.start_notify(
+            Connection.NOTIFY_CHARACTERISTIC, self.directModeDataHandler
+        )
+        self._connection_attempt = 0
+        self._reconnect_attempt = 0
+        self._set_state(ConnectionState.AUTHENTICATED)
+        self._connected.set()
+
+    async def directModeDataHandler(
+        self, characteristic: BleakGATTCharacteristic, recv_data: bytearray
+    ):
+        """Handle raw BLE notifications in direct mode.
+
+        Parses version-4 0xAA frames: [0xAA, 0x04, len_lo, len_hi, crc8(first 4),
+        byte5, seq_lo, seq_hi, payload(len), crc16(2)].  Payload is XOR-decoded
+        with the seq_lo byte before being delivered as an OdmPacket.
+        """
+        if self._client is None or not self._client.is_connected:
+            return
+
+        self._direct_buffer += bytes(recv_data)
+
+        while len(self._direct_buffer) >= 8:
+            if self._direct_buffer[0:1] != Packet.PREFIX:
+                next_aa = self._direct_buffer.find(Packet.PREFIX)
+                if next_aa == -1:
+                    self._direct_buffer = b""
+                    break
+                self._direct_buffer = self._direct_buffer[next_aa:]
+                continue
+
+            version = self._direct_buffer[1]
+            if version != 4:
+                self._direct_buffer = self._direct_buffer[1:]
+                continue
+
+            payload_len = struct.unpack("<H", self._direct_buffer[2:4])[0]
+            total = 8 + payload_len + 2
+            if len(self._direct_buffer) < total:
+                break
+
+            frame = self._direct_buffer[:total]
+            self._direct_buffer = self._direct_buffer[total:]
+
+            if crc8(frame[:4]) != frame[4]:
+                self._logger.log_filtered(
+                    LogOptions.CONNECTION_DEBUG,
+                    "directMode: CRC8 mismatch, skipping frame",
+                )
+                continue
+
+            if crc16(frame[:-2]) != struct.unpack("<H", frame[-2:])[0]:
+                self._logger.log_filtered(
+                    LogOptions.CONNECTION_DEBUG,
+                    "directMode: CRC16 mismatch, skipping frame",
+                )
+                continue
+
+            seq_byte = frame[6]
+            raw_payload = frame[8 : 8 + payload_len]
+            payload = (
+                bytes([b ^ seq_byte for b in raw_payload])
+                if seq_byte != 0
+                else raw_payload
+            )
+
+            self._logger.log_filtered(
+                LogOptions.DECRYPTED_PAYLOADS,
+                "directMode: payload (XOR=0x%02X): %s",
+                seq_byte,
+                bytearray(payload).hex(),
+            )
+
+            packet = OdmPacket(cmd_id_odm=0, payload=payload)
+            self._listeners.on_packet_parsed(packet)
+            try:
+                processed = await self._data_parse(packet)
+            except Exception as e:  # noqa: BLE001
+                await self.add_error(e)
+                continue
+
+            if not processed:
+                self._logger.log_filtered(
+                    LogOptions.CONNECTION_DEBUG,
+                    "directMode: unprocessed packet",
+                )
+
     async def initBleSessionKey(self):
         self._set_state(ConnectionState.PUBLIC_KEY_EXCHANGE)
         self._logger.log_filtered(
@@ -887,6 +989,11 @@ class Connection:
         self, characteristic: BleakGATTCharacteristic, recv_data: bytearray
     ):
         if self._client is None or not self._client.is_connected:
+            return
+
+        # Skip spontaneous device packets (e.g. 0xAA status data); wait for the
+        # actual ECDH pubkey response which starts with 0x5A (EncPacket) or 0x7E (ODM).
+        if bytes(recv_data)[0:1] not in (EncPacket.PREFIX[0:1], OdmPacket.PREFIX):
             return
 
         self._set_state(ConnectionState.PUBLIC_KEY_RECEIVED)
@@ -937,6 +1044,9 @@ class Connection:
         if self._client is None or not self._client.is_connected:
             return
 
+        if bytes(recv_data)[0:1] not in (EncPacket.PREFIX[0:1], OdmPacket.PREFIX):
+            return
+
         self._set_state(ConnectionState.SESSION_KEY_RECEIVED)
         await self._client.stop_notify(Connection.NOTIFY_CHARACTERISTIC)
         encrypted_data = await self.parseSimple(bytes(recv_data))
@@ -969,6 +1079,9 @@ class Connection:
         self, characteristic: BleakGATTCharacteristic, recv_data: bytearray
     ):
         if self._client is None or not self._client.is_connected:
+            return
+
+        if bytes(recv_data)[0:1] not in (EncPacket.PREFIX[0:1], OdmPacket.PREFIX):
             return
 
         self._set_state(ConnectionState.AUTH_STATUS_RECEIVED)
